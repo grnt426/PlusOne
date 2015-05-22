@@ -17,8 +17,21 @@ def hello(socketUrl, channels, users):
 			text = data['text']
 			if "++" in text:
 				print("Plus one!")
+				if text.index("++") != 0:
+					print("Only support prefix notation!")
+					continue
+				
 				user = text[text.index("++")+2:]
+				if user == "":
+					print("User's name is empty???")
+					continue
+				user = user.lower()
 				print("User '{}'".format(user))
+				
+				if user not in users:
+					print("Cannot find user, ignoring")
+					continue
+					
 				users[user] = users[user] + 1
 				print("Incrementing {} to {}".format(user, users[user]))
 				postData = "{} + {}".format(user, users[user])
