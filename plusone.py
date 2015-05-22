@@ -13,12 +13,12 @@ def hello(socketUrl, channels):
 		data = json.loads(result)
 		if data['type'] == "message":
 			print("Found message")
-			channel = data['channel']
+			channel = channels[data['channel']]
 			text = data['text']
 			if "grant++" in text:
 				print("Plus one!")
 				postData = "Grant was just incremented"
-				responseUrl = 'https://nhstechteam.slack.com/services/hooks/slackbot?token=xTb8jdy1oJFdFbqMchjMEcHO&channel=%23general'
+				responseUrl = 'https://nhstechteam.slack.com/services/hooks/slackbot?token=xTb8jdy1oJFdFbqMchjMEcHO&channel=%23' + channel
 				print("Response: {}".format(responseUrl))
 				r = requests.post(responseUrl, postData)
 				print("Response: {}".format(r.text))
@@ -26,6 +26,9 @@ def hello(socketUrl, channels):
 r = requests.get('https://slack.com/api/rtm.start?token=xoxp-4997715752-5022309795-5001368532-4f2da6')
 data = r.json()
 socketUrl = data['url']
-channels = data['channels']
+rawChannels = data['channels']
+channels = {}
+for channel in rawChannels:
+	channels[channel['id']] = channel['name']
 
-asyncio.get_event_loop().run_until_complete(hello(socketUrl))
+asyncio.get_event_loop().run_until_complete(hello(socketUrl, channels))
