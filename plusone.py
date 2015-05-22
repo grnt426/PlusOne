@@ -21,7 +21,7 @@ def hello(socketUrl, channels, users):
 				print("User '{}'".format(user))
 				users[user] = users[user] + 1
 				print("Incrementing {} to {}".format(user, users[user]))
-				postData = "{} - {}".format(user, users[user])
+				postData = "{} + {}".format(user, users[user])
 				responseUrl = 'https://nhstechteam.slack.com/services/hooks/slackbot?token=xTb8jdy1oJFdFbqMchjMEcHO&channel=%23' + channel
 				print("Response: {}".format(responseUrl))
 				r = requests.post(responseUrl, postData)
