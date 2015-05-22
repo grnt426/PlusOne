@@ -13,6 +13,9 @@ def hello(socketUrl, channels, users):
 		data = json.loads(result)
 		if data['type'] == "message":
 			print("Found message")
+			if data['channel'] not in channels:
+				print("Not a public channel, ignoring...")
+				continue
 			channel = channels[data['channel']]
 			text = data['text']
 			if "++" in text:
