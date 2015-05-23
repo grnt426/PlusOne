@@ -10,6 +10,8 @@ def hello(socketUrl, channels, users):
 	while True:
 		result = yield from websocket.recv()
 		print("Data {}".format(result))
+		if result is None:
+			continue
 		data = json.loads(result)
 		if data['type'] == "message":
 			print("Found message")
@@ -17,6 +19,9 @@ def hello(socketUrl, channels, users):
 				print("Not a public channel, ignoring...")
 				continue
 			channel = channels[data['channel']]
+			if "text" not in data:
+				print("No text object? Skipping...")
+				continue
 			text = data['text']
 			if "++" in text:
 				print("Plus one!")
