@@ -1,4 +1,5 @@
 import logging
+import string
 
 class UpvoteHandler:
 	"""Searches messages for '++user', and gives them a +1"""
@@ -46,11 +47,26 @@ class UpvoteHandler:
 		return False
 		
 	def parseUser(self, text):
-		plusIndex = text.index("++")
-		user = text[plusIndex+2:]
+		user = ""
+		text = text.partition("++")
+		if text[0] != "" and " " not in text[0]:
+			user = text[0]
+		elif text[0] != "" and " " in text[0]:
+			user = text[0][text[0].rindex(" ")+1:]
+		
+		if user == "":
+			if text[2] != "" and " " not in text[2]:
+				user = text[2]
+			elif text[2] != "" and " " in text[2]:
+				user = text[2][:text[2].index(" ")]
+				
+		exclude = set(string.punctuation)
+		user = ''.join(ch for ch in user if ch not in exclude)
+		
 		if user == "":
 			self.logger.debug("User's name is empty???")
 			return None
+		
 		user = user.lower()
 		self.logger.debug("User '{}'".format(user))
 		
@@ -64,7 +80,7 @@ class UpvoteHandler:
 		for user, count in self.users.iteritems():
 			if count == 0:
 				continue
-			resultStr = "{}\n{},{}".format(resultStr, user, count)
+			resultStr = "{}{},{}\n".format(resultStr, user, count)
 		save = open(self.RESULT_FILE, "w")
 		save.write(resultStr)
 		save.close()
