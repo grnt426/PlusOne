@@ -1,82 +1,59 @@
 import sys
 import time
 import json
+import upvotehandler
+import logging
 from slackclient import SlackClient
 
-def handleEvent(event, users, sc):
-	print("Event {}".format(event))
-	if "type" not in event:
-		print("Unknown message type, ignoring")
-		return
-		
-	if event['type'] == "message":
-		print("Found message")
-		if 'channel' not in event:
-			print("Not in a channel")
-			return
-		channel = event['channel']
-		if "text" not in event:
-			print("No text object? Skipping...")
-			return
-		text = event['text']
-		if "++" in text:
-			print("Plus one!")
-			if text.index("++") != 0:
-				print("Only support prefix notation!")
-				return
-			
-			user = text[text.index("++")+2:]
-			if user == "":
-				print("User's name is empty???")
-				return
-			user = user.lower()
-			print("User '{}'".format(user))
-			
-			if user not in users:
-				print("Cannot find user, ignoring")
-				return
-				
-			users[user] = users[user] + 1
-			message = "{} + {}".format(user, users[user])
-			print(message)
-			sc.rtm_send_message(channel, message)
+logging.basicConfig(filename='history.log',filemode='w',level=logging.DEBUG)
 
 def processUsers(data):
 	data = json.loads(data)
-	print("processing users {}".format(data["members"]))
+	logging.debug("processing users {}".format(data["members"]))
 	users = {}
 	for user in data["members"]:
-		print("Raw {}".format(user))
+		logging.debug("Raw {}".format(user))
 		profile = user['profile']
 		if 'first_name' not in profile:
-			print("Skipping user...")
+			logging.debug("Skipping user...")
 			continue
 		name = profile['first_name'].lower()
-		print("User: {}".format(name))
+		logging.info("User: {}".format(name))
 		users[name] = 0
 	return users
 
+# Grad the API token to allow us to authenticate with Slack
 data = sys.stdin.readlines()
 if len(data) is not 1:
 	print("Need the bot's User Token")
 	sys.exit(1)
-	
 token = data[0]
-print("Token {}".format(token))
+logging.info("Token {}".format(token))
+
 sc = SlackClient(token)
 if sc.rtm_connect():
 
 	payload = {}
 	users = processUsers(sc.api_call("users.list"))
 
-	# All other reads will be events from Slack
+	# Build the list of handlers, which will process all messages from Slack
+	handlers = [upvotehandler.UpvoteHandler(sc, users)]
+	
+	# Process forever
 	while True:
 		result = sc.rtm_read()
 		if len(result) is 0:
 			time.sleep(1)
 			continue
-		print("Data {}".format(result))
+		logging.debug("Data {}".format(result))
 		for event in result:
-			handleEvent(event, users, sc)
+			for handler in handlers:
+				try:
+					handler.handleEvent(event)
+				except Exception as e:
+					logging.error("Something happened to a handler :(: {}".format(e))
+					continue
 else:
 	print("Failed to connect :(")
+	logging.error("Failed to connect")
+	sys.exit(1)
