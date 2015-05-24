@@ -1,67 +1,82 @@
-import asyncio
-import websockets
-import requests
+import sys
+import time
 import json
+from slackclient import SlackClient
 
-@asyncio.coroutine
-def hello(socketUrl, channels, users):
-	print("URL {}".format(socketUrl))
-	websocket = yield from websockets.connect(socketUrl)
-	while True:
-		result = yield from websocket.recv()
-		print("Data {}".format(result))
-		if result is None:
+def handleEvent(event, users, sc):
+	print("Event {}".format(event))
+	if "type" not in event:
+		print("Unknown message type, ignoring")
+		return
+		
+	if event['type'] == "message":
+		print("Found message")
+		if 'channel' not in event:
+			print("Not in a channel")
+			return
+		channel = event['channel']
+		if "text" not in event:
+			print("No text object? Skipping...")
+			return
+		text = event['text']
+		if "++" in text:
+			print("Plus one!")
+			if text.index("++") != 0:
+				print("Only support prefix notation!")
+				return
+			
+			user = text[text.index("++")+2:]
+			if user == "":
+				print("User's name is empty???")
+				return
+			user = user.lower()
+			print("User '{}'".format(user))
+			
+			if user not in users:
+				print("Cannot find user, ignoring")
+				return
+				
+			users[user] = users[user] + 1
+			message = "{} + {}".format(user, users[user])
+			print(message)
+			sc.rtm_send_message(channel, message)
+
+def processUsers(data):
+	data = json.loads(data)
+	print("processing users {}".format(data["members"]))
+	users = {}
+	for user in data["members"]:
+		print("Raw {}".format(user))
+		profile = user['profile']
+		if 'first_name' not in profile:
+			print("Skipping user...")
 			continue
-		data = json.loads(result)
-		if data['type'] == "message":
-			print("Found message")
-			if data['channel'] not in channels:
-				print("Not a public channel, ignoring...")
-				continue
-			channel = channels[data['channel']]
-			if "text" not in data:
-				print("No text object? Skipping...")
-				continue
-			text = data['text']
-			if "++" in text:
-				print("Plus one!")
-				if text.index("++") != 0:
-					print("Only support prefix notation!")
-					continue
-				
-				user = text[text.index("++")+2:]
-				if user == "":
-					print("User's name is empty???")
-					continue
-				user = user.lower()
-				print("User '{}'".format(user))
-				
-				if user not in users:
-					print("Cannot find user, ignoring")
-					continue
-					
-				users[user] = users[user] + 1
-				print("Incrementing {} to {}".format(user, users[user]))
-				postData = "{} + {}".format(user, users[user])
-				responseUrl = 'https://nhstechteam.slack.com/services/hooks/slackbot?token=xTb8jdy1oJFdFbqMchjMEcHO&channel=%23' + channel
-				print("Response: {}".format(responseUrl))
-				r = requests.post(responseUrl, postData)
-				print("Response: {}".format(r.text))
+		name = profile['first_name'].lower()
+		print("User: {}".format(name))
+		users[name] = 0
+	return users
 
-r = requests.get('https://slack.com/api/rtm.start?token=xoxp-4997715752-5022309795-5001368532-4f2da6')
-data = r.json()
-socketUrl = data['url']
-
-rawChannels = data['channels']
-channels = {}
-for channel in rawChannels:
-	channels[channel['id']] = channel['name']
-
-rawUsers = data['users']
-users = {}
-for user in rawUsers:
-	name = user['profile']['first_name'].lower()
-	print("User: {}".format(name))
-	users[name] = 0
+data = sys.stdin.readlines()
+if len(data) is not 1:
+	print("Need the bot's User Token")
+	sys.exit(1)
 	
-asyncio.get_event_loop().run_until_complete(hello(socketUrl, channels, users))
+token = data[0]
+print("Token {}".format(token))
+sc = SlackClient(token)
+if sc.rtm_connect():
+
+	payload = {}
+	users = processUsers(sc.api_call("users.list"))
+
+	# All other reads will be events from Slack
+	while True:
+		result = sc.rtm_read()
+		if len(result) is 0:
+			time.sleep(1)
+			continue
+		print("Data {}".format(result))
+		for event in result:
+			handleEvent(event, users, sc)
+else:
+	print("Failed to connect :(")
