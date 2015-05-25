@@ -1,6 +1,5 @@
 import sys
 import time
-import json
 import logging
 from slackclient import SlackClient
 import upvotehandler

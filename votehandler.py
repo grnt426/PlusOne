@@ -110,14 +110,16 @@ class VoteHandler:
 		
 		if ballotForm.isValidVote(user, message[2], self.currentChannel):
 			self.logger.debug("Recording vote.")
-			ballotForm.recordVote(user, message[2])
+			if ballotForm.recordVote(user, message[2]):
+				self.concludeVoting(ballotForm)
 		else:
 			self.logger.debug("Vote not valid")
 
-	def concludeVoting(self, ballot):
-		return
+	def concludeVoting(self, ballotForm):
+		self.logger.info("Ballot '{}' has concluded. Results: {}".format(ballotForm.title, ballotForm))
+		self.client.postMessage(self.currentChannel, ">'{}' has concluded.".format(ballotForm.title))
 
-	def printCurrentResults(self, ballot):
+	def printCurrentResults(self, ballotForm):
 		return
 
 	def printCurrentBallots(self):

@@ -2,12 +2,12 @@ import logging
 
 class Ballot:
 
-	def __init__(self, sc, title, quorum, options, channel):
+	def __init__(self, helper, title, quorum, options, channel):
 		self.title = title
 		self.quorum = quorum
 		self.votes = {}
 		self.logger = logging.getLogger("Ballot")
-		self.client = sc
+		self.client = helper
 		self.channel = channel
 		self.options = options
 		self.optionTally = {}
@@ -18,7 +18,8 @@ class Ballot:
 		if option not in self.optionTally:
 			self.optionTally[option] = 0
 		self.optionTally[option] = self.optionTally[option] + 1
-		self.printBallot()	
+		self.client.postMessage(self.channel, "{}\n{}".format(self.title, self.__str__()))
+		return self.isConcluded()
 		
 	def isValidVote(self, user, option, channel):
 		if user in self.votes:
@@ -32,12 +33,14 @@ class Ballot:
 			return False
 		return True
 			
-	def printBallot(self):
+	def __str__(self):
 		ballot = ">"
 		for option, tally in self.optionTally.iteritems():
 			ballot = "{}{}:{}  ".format(ballot, option, tally)
-		self.client.rtm_send_message(self.channel, "{}\n{}".format(self.title, ballot))
+		return ballot
 		
 	def isConcluded(self):
+		if len(self.votes) == self.quorum:
+			self.concluded = True
 		return self.concluded
 		
