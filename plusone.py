@@ -2,6 +2,7 @@ import sys
 import time
 import json
 import upvotehandler
+import votehandler
 import logging
 from slackclient import SlackClient
 
@@ -21,6 +22,17 @@ def processUsers(data):
 		logging.info("User: {}".format(name))
 		users[name] = 0
 	return users
+	
+# This is really lazy, consolidate later...
+def processUserIds(data):
+	data = json.loads(data)
+	users = {}
+	for user in data["members"]:
+		if 'first_name' not in user['profile']:
+			continue
+		else:
+			users[user['id']] = user['profile']['first_name']
+	return users
 
 # Grad the API token to allow us to authenticate with Slack
 data = sys.stdin.readlines()
@@ -34,10 +46,12 @@ sc = SlackClient(token)
 if sc.rtm_connect():
 
 	payload = {}
-	users = processUsers(sc.api_call("users.list"))
-
+	rawList = sc.api_call("users.list")
+	users = processUsers(rawList)
+	userIds = processUserIds(rawList)
+	
 	# Build the list of handlers, which will process all messages from Slack
-	handlers = [upvotehandler.UpvoteHandler(sc, users)]
+	handlers = [upvotehandler.UpvoteHandler(sc, users), votehandler.VoteHandler(sc, userIds)]
 	
 	# Process forever
 	while True:
