@@ -3,12 +3,12 @@ import ballot
 
 class VoteHandler:
 
-	def __init__(self, sc, userIds):
-		self.client = sc
+	def __init__(self, helper):
+		self.client = helper
 		self.ballots = []
-		self.currentChannel = ""
+		self.currentChannel = "" # This is safe, as all operations are serialized
 		self.logger = logging.getLogger("VoteHandler")
-		self.userIds = userIds
+		self.userIds = helper.getUserIds()
 	
 	def handleEvent(self, message):
 		if self.canHandle(message):
@@ -54,15 +54,15 @@ class VoteHandler:
 		
 		# The command itself counts towards the total
 		if len(message) < 3:
-			self.client.rtm_send_message(self.currentChannel, "Invalid format for callvote, Expected callvote |[title]| [votes] (options)")
+			self.client.postMessage(self.currentChannel, "Invalid format for callvote, Expected callvote |[title]| [votes] (options)")
 		
 		title = message[message.index("|")+1:message.rindex("|")]
 		if title == "":
-			self.client.rtm_send_message(self.currentChannel, "Empty title? :\\")
+			self.client.postMessage(self.currentChannel, "Empty title? :\\")
 			return
 		
 		if message.rindex("|") == len(message) - 1:
-			self.client.rtm_send_message(self.currentChannel, "Invalid format for callvote, Expected callvote |[title]| [votes] (options)")
+			self.client.postMessage(self.currentChannel, "Invalid format for callvote, Expected callvote |[title]| [votes] (options)")
 	
 		message = message[message.rindex("|") + 1:]
 		self.logger.debug("Options: {}".format(message))
@@ -71,17 +71,17 @@ class VoteHandler:
 		try:
 			votes = int(message[1])
 		except Exception:
-			self.client.rtm_send_message(self.currentChannel, "Invalid format for callvote, Expected a number following the title for quorum.")
+			self.client.postMessage(self.currentChannel, "Invalid format for callvote, Expected a number following the title for quorum.")
 			return
 		
 		ballotForm = ballot.Ballot(self.client, title, votes, ("yea", "nay"), self.currentChannel)
 		self.ballots.append(ballotForm)
 		self.logger.debug("Title: {} Quorum: {}".format(title, votes))
-		self.client.rtm_send_message(self.currentChannel, "Vote for '{}' has started! {} votes are needed for quorum. 'makevote {} [yea | nay]' to vote.".format(title, votes, len(self.ballots) - 1))
+		self.client.postMessage(self.currentChannel, "Vote for '{}' has started! {} votes are needed for quorum. 'makevote {} [yea | nay]' to vote.".format(title, votes, len(self.ballots) - 1))
 	
 	def placeVote(self, message, user):
 		if len(message) < 3 or len(message) > 4:
-			self.client.rtm_send_message(self.currentChannel, "Invalid format for makevote, Expected makevote [voteid] [option]")
+			self.client.postMessage(self.currentChannel, "Invalid format for makevote, Expected makevote [voteid] [option]")
 		
 		if user not in self.userIds:
 			self.logger.debug("User not bound to ID?")
@@ -94,11 +94,11 @@ class VoteHandler:
 			ballotId = int(ballotId)
 		else:
 			self.logger.debug("Invalid ballot ID")
-			self.client.rtm_send_message(self.currentChannel, "Invalid ballot ID.")
+			self.client.postMessage(self.currentChannel, "Invalid ballot ID.")
 			
 		if ballotId > len(self.ballots) - 1 or ballotId < 0:
 			self.logger.debug("Ballot ID not found.")
-			self.client.rtm_send_message(self.currentChannel, "Ballot ID not found.")
+			self.client.postMessage(self.currentChannel, "Ballot ID not found.")
 			return
 			
 		ballotId = int(ballotId)
@@ -124,4 +124,4 @@ class VoteHandler:
 		return
 	
 	def voteHelp(self):
-		self.client.rtm_send_message(self.currentChannel, "Format: callvote [title] [votes] (options). By default, only options are yea/nay. Separate options by commas. To place a vote: 'makevote [ballotid] [option]'")
+		self.client.postMessage(self.currentChannel, "Format: callvote [title] [votes] (options). By default, only options are yea/nay. Separate options by commas. To place a vote: 'makevote [ballotid] [option]'")

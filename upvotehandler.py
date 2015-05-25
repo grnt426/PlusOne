@@ -4,9 +4,9 @@ import string
 class UpvoteHandler:
 	"""Searches messages for '++user', and gives them a +1"""
 	
-	def __init__(self, sc, usersList):
-		self.client = sc
-		self.users = usersList
+	def __init__(self, helper):
+		self.client = helper
+		self.users = helper.getUsers()
 		self.logger = logging.getLogger("UpvoteHandler")
 		self.RESULT_FILE = "tallies.txt"
 		self.retrieveSavedData()
@@ -25,8 +25,8 @@ class UpvoteHandler:
 			self.users[user] = self.users[user] + 1
 			message = "{} + {}".format(user, self.users[user])
 			self.writeCurrentResults()
-			self.logger.info(message)
-			self.client.rtm_send_message(channel, message)
+			self.logger.info("{}: {}".format(channel, message))
+			self.client.postMessage(channel, message)
 	
 	def canHandle(self, event):
 		if "type" not in event:
