@@ -1,5 +1,6 @@
 import logging
 import string
+import ratelimiter
 
 class UpvoteHandler:
 	"""Searches messages for '++user', and gives them a +1"""
@@ -10,6 +11,7 @@ class UpvoteHandler:
 		self.logger = logging.getLogger("UpvoteHandler")
 		self.RESULT_FILE = "tallies.txt"
 		self.retrieveSavedData()
+		self.rateLimiter = ratelimiter.RateLimiter(60) # Limit to 1/min
 
 	def handleEvent(self, event):
 		
@@ -21,7 +23,12 @@ class UpvoteHandler:
 			if user is None:
 				self.logger.debug("No user found for ++")
 				return
-				
+
+			if self.rateLimiter.isUserRateLimited(user):
+				self.logger.debug("User was rate limited")
+				return
+			self.rateLimiter.limitUser(user)
+			
 			self.users[user] = self.users[user] + 1
 			message = "{} + {}".format(user, self.users[user])
 			self.writeCurrentResults()
@@ -49,11 +56,17 @@ class UpvoteHandler:
 	def parseUser(self, text):
 		user = ""
 		text = text.partition("++")
+		
+		# Check if the name is in front of the ++
 		if text[0] != "" and " " not in text[0]:
 			user = text[0]
 		elif text[0] != "" and " " in text[0]:
 			user = text[0][text[0].rindex(" ")+1:]
+			
+		exclude = set(string.punctuation)
+		user = ''.join(ch for ch in user if ch not in exclude)
 		
+		# If we didn't find it, then check if the name is behind the ++
 		if user == "":
 			if text[2] != "" and " " not in text[2]:
 				user = text[2]
