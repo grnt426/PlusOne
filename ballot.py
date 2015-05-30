@@ -6,7 +6,7 @@ class Ballot:
 		self.title = title
 		self.quorum = quorum
 		self.votes = {}
-		self.logger = logging.getLogger("Ballot")
+		self.logger = logging.getLogger("plusone.Ballot")
 		self.client = helper
 		self.channel = channel
 		self.options = options

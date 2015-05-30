@@ -8,7 +8,7 @@ class UpvoteHandler:
 	def __init__(self, helper):
 		self.client = helper
 		self.users = helper.getUsers()
-		self.logger = logging.getLogger("UpvoteHandler")
+		self.logger = logging.getLogger("plusone.UpvoteHandler")
 		self.RESULT_FILE = "tallies.txt"
 		self.retrieveSavedData()
 		self.rateLimiter = ratelimiter.RateLimiter(60) # Limit to 1/min

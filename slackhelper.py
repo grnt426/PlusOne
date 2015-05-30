@@ -6,7 +6,7 @@ class SlackHelper:
 	def __init__(self, sc):
 		self.client = sc
 		self.rawUsers = sc.api_call("users.list")
-		self.logger = logging.getLogger("SlackHelper")
+		self.logger = logging.getLogger("plusone.SlackHelper")
 		self.users = {}
 		self.userIds = {}
 		
@@ -15,16 +15,16 @@ class SlackHelper:
 			return self.users
 			
 		data = json.loads(self.rawUsers)
-		logging.debug("processing users {}".format(data["members"]))
+		self.logger.debug("processing users {}".format(data["members"]))
 		users = {}
 		for user in data["members"]:
-			logging.debug("Raw {}".format(user))
+			self.logger.debug("Raw {}".format(user))
 			profile = user['profile']
 			if 'first_name' not in profile:
-				logging.debug("Skipping user...")
+				self.logger.debug("Skipping user...")
 				continue
 			name = profile['first_name'].lower()
-			logging.info("User: {}".format(name))
+			self.logger.info("User: {}".format(name))
 			users[name] = 0
 		self.users = users
 		return users

@@ -7,7 +7,7 @@ class VoteHandler:
 		self.client = helper
 		self.ballots = []
 		self.currentChannel = "" # This is safe, as all operations are serialized
-		self.logger = logging.getLogger("VoteHandler")
+		self.logger = logging.getLogger("plusone.VoteHandler")
 		self.userIds = helper.getUserIds()
 	
 	def handleEvent(self, message):
