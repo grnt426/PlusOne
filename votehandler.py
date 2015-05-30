@@ -9,6 +9,7 @@ class VoteHandler:
 		self.currentChannel = "" # This is safe, as all operations are serialized
 		self.logger = logging.getLogger("plusone.VoteHandler")
 		self.userIds = helper.getUserIds()
+		self.rateLimiter = ratelimiter.RateLimiter(60) # Limit to 1/min
 	
 	def handleEvent(self, message):
 		if self.canHandle(message):
@@ -18,7 +19,7 @@ class VoteHandler:
 			user = message['user']
 			
 			if "callvote" in text:
-				self.initiateVote(text)
+				self.initiateVote(text, user)
 			elif "makevote" in data:
 				self.placeVote(data, user)
 			elif "printvotes" in data:
@@ -46,11 +47,16 @@ class VoteHandler:
 			return True
 		return False
 		
-	def initiateVote(self, message):
+	def initiateVote(self, message, user):
 		"""
 			Starts a vote, with the default of binary yes/no for options
 			Format: callvote [title] [votes] (options)
 		"""
+		
+		if self.rateLimiter.isUserRateLimited(user):
+			self.logger.debug("User was rate limited")
+			return
+		self.rateLimiter.limitUser(user)
 		
 		# The command itself counts towards the total
 		if len(message) < 3:
