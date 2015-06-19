@@ -1,5 +1,6 @@
 tokens.auth
-history.log
+history.log*
 *.swp
 .*
 *.pyc
+tallies*

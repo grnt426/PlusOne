@@ -7,11 +7,11 @@ class UpvoteHandler:
 	
 	def __init__(self, helper):
 		self.client = helper
-		self.users = helper.getUsers()
+		self.scores = {}
 		self.logger = logging.getLogger("plusone.UpvoteHandler")
 		self.RESULT_FILE = "tallies.txt"
 		self.retrieveSavedData()
-		self.rateLimiter = ratelimiter.RateLimiter(60) # Limit to 1/min
+		self.rateLimiter = ratelimiter.RateLimiter(15) # Limit to 4/min
 
 	def handleEvent(self, event):
 		
@@ -19,18 +19,29 @@ class UpvoteHandler:
 			self.logger.debug("Plus one!")
 			channel = event['channel']
 			text = event['text']
-			user = self.parseUser(text)
+			user = self.parseUser(text, channel)
+			if isinstance(user, list):
+				self.logger.debug("User matches multiple people")
+				self.client.postMessage(channel, "Sorry, that matches multiple people. Try another name (or username).")
+				return
 			if user is None:
 				self.logger.debug("No user found for ++")
 				return
-
-			if self.rateLimiter.isUserRateLimited(user):
+			
+			userId = user.getUserId()
+			self.logger.debug("User ID: {}".format(userId))
+			if self.rateLimiter.isUserRateLimited(userId):
 				self.logger.debug("User was rate limited")
 				return
-			self.rateLimiter.limitUser(user)
-			
-			self.users[user] = self.users[user] + 1
-			message = "{} + {}".format(user, self.users[user])
+			self.rateLimiter.limitUser(userId)
+			self.logger.debug("User not rate limited")
+
+			if userId in self.scores:
+				self.scores[userId] = self.scores[userId] + 1
+			else:
+				self.scores[userId] = 1
+
+			message = "{} + {}".format(user.getUsername(), self.scores[userId])
 			self.writeCurrentResults()
 			self.logger.info("{}: {}".format(channel, message))
 			self.client.postMessage(channel, message)
@@ -53,7 +64,7 @@ class UpvoteHandler:
 				return True
 		return False
 		
-	def parseUser(self, text):
+	def parseUser(self, text, channel):
 		user = ""
 		text = text.partition("++")
 		
@@ -83,14 +94,13 @@ class UpvoteHandler:
 		user = user.lower()
 		self.logger.debug("User '{}'".format(user))
 		
-		if user not in self.users:
-			self.logger.debug("Cannot find user, ignoring")
-			return None
-		return user
+		matchedUser = self.client.findUserMatch(user)
+		self.logger.debug("Matched User '{}'".format(matchedUser))
+		return matchedUser
 			
 	def writeCurrentResults(self):
 		resultStr = ""
-		for user, count in self.users.iteritems():
+		for user, count in self.scores.iteritems():
 			if count == 0:
 				continue
 			resultStr = "{}{},{}\n".format(resultStr, user, count)
@@ -102,6 +112,6 @@ class UpvoteHandler:
 		saved = open(self.RESULT_FILE, "r")
 		for line in saved:
 			data = line.split(",")
-			self.users[data[0]] = int(data[1])
+			self.scores[data[0]] = int(data[1])
 		saved.close()
 			
